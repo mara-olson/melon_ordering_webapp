@@ -33,10 +33,9 @@ app.config['PRESERVE_CONTEXT_ON_EXCEPTION'] = True
 def index():
     """Return homepage."""
     
-    # session['username'] = 'Yadi'
     
     return render_template("homepage.html") 
-    # user=session['username'])
+   
 
 
 @app.route("/melons")
@@ -70,20 +69,32 @@ def show_shopping_cart():
     # The logic here will be something like:
     #
     # - get the cart dictionary from the session
-    # - create a list to hold melon objects and a variable to hold the total
-    #   cost of the order
+    cart = session.get("cart", {})
+    
+    # - create a list to hold melon objects and a variable to hold the total cost of the order
+    melons_in_cart = []
+    order_total = 0
+
     # - loop over the cart dictionary, and for each melon id:
     #    - get the corresponding Melon object
     #    - compute the total cost for that type of melon
     #    - add this to the order total
     #    - add quantity and total cost as attributes on the Melon object
     #    - add the Melon object to the list created above
+    for melon_id, count in cart.items():
+        melon_obj = melons.get_by_id(melon_id)
+        item_total = melon_obj.price * count
+        order_total += item_total
+        melon_obj.count = count
+        melon_obj.item_total = item_total
+        melons_in_cart.append(melon_obj)
+
     # - pass the total order cost and the list of Melon objects to the template
     #
     # Make sure your function can also handle the case wherein no cart has
     # been added to the session
 
-    return render_template("cart.html")
+    return render_template("cart.html",cart=melons_in_cart, total_cost=order_total)
 
 
 @app.route("/add_to_cart/<melon_id>")
@@ -104,15 +115,17 @@ def add_to_cart(melon_id):
     # - increment the count for that melon id by 1
     # - flash a success message
     # - redirect the user to the cart page
-    session['cart'] = {}
-    # count = session['cart']['melon_id']
+    if 'cart' not in session:
+        session['cart'] = {}
 
     if melon_id not in session['cart']:
         session['cart'][melon_id] = 1
     else:
         session['cart'][melon_id] += 1
 
-    return render_template("melon_details.html",cart=session['cart'])
+    flash("Added to cart!")
+
+    return redirect("/cart")
 
 
 @app.route("/login", methods=["GET"])
